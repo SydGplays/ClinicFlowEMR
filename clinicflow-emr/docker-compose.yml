@@ -1,0 +1,22 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: clinicflow-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: clinicflow
+      POSTGRES_PASSWORD: clinicflow_dev_password
+      POSTGRES_DB: clinicflow
+    ports:
+      - "5432:5432"
+    volumes:
+      - clinicflow_postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U clinicflow -d clinicflow"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  clinicflow_postgres:
+

@@ -1,0 +1,138 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  DOCTOR
+  NURSE
+  RECEPTIONIST
+}
+
+enum Gender {
+  MALE
+  FEMALE
+  OTHER
+  PREFER_NOT_TO_SAY
+}
+
+enum AllergySeverity {
+  MILD
+  MODERATE
+  SEVERE
+}
+
+enum AppointmentStatus {
+  PENDING
+  CONFIRMED
+  COMPLETED
+  CANCELLED
+  NO_SHOW
+}
+
+model User {
+  id String @id @default(uuid()) @db.Uuid
+  firstName String
+  lastName String
+  email String @unique
+  passwordHash String
+  role Role @default(RECEPTIONIST)
+  active Boolean @default(true)
+  records MedicalRecord[] @relation("RecordAuthor")
+  appointments Appointment[] @relation("AppointmentClinician")
+  auditLogs AuditLog[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Patient {
+  id String @id @default(uuid()) @db.Uuid
+  medicalRecordNumber String @unique
+  firstName String
+  lastName String
+  dateOfBirth DateTime
+  gender Gender
+  phone String?
+  email String?
+  address String?
+  emergencyContact String?
+  records MedicalRecord[]
+  allergies Allergy[]
+  appointments Appointment[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@index([lastName, firstName])
+}
+
+model MedicalRecord {
+  id String @id @default(uuid()) @db.Uuid
+  patientId String @db.Uuid
+  authorId String @db.Uuid
+  visitDate DateTime @default(now())
+  chiefComplaint String
+  diagnosis String
+  notes String
+  vitalSigns Json?
+  patient Patient @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  author User @relation("RecordAuthor", fields: [authorId], references: [id])
+  prescriptions Prescription[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@index([patientId, visitDate])
+}
+
+model Prescription {
+  id String @id @default(uuid()) @db.Uuid
+  recordId String @db.Uuid
+  medication String
+  dosage String
+  frequency String
+  duration String
+  instructions String?
+  record MedicalRecord @relation(fields: [recordId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+}
+
+model Allergy {
+  id String @id @default(uuid()) @db.Uuid
+  patientId String @db.Uuid
+  allergen String
+  reaction String?
+  severity AllergySeverity
+  patient Patient @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  @@unique([patientId, allergen])
+}
+
+model Appointment {
+  id String @id @default(uuid()) @db.Uuid
+  patientId String @db.Uuid
+  clinicianId String? @db.Uuid
+  scheduledAt DateTime
+  durationMinutes Int @default(30)
+  reason String
+  status AppointmentStatus @default(PENDING)
+  notes String?
+  patient Patient @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  clinician User? @relation("AppointmentClinician", fields: [clinicianId], references: [id])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@index([scheduledAt, status])
+}
+
+model AuditLog {
+  id String @id @default(uuid()) @db.Uuid
+  userId String? @db.Uuid
+  action String
+  entity String
+  entityId String?
+  details Json?
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+  createdAt DateTime @default(now())
+  @@index([createdAt])
+}

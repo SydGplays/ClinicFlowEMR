@@ -1,0 +1,24 @@
+CREATE TYPE "Role" AS ENUM ('ADMIN','DOCTOR','NURSE','RECEPTIONIST');
+CREATE TYPE "Gender" AS ENUM ('MALE','FEMALE','OTHER','PREFER_NOT_TO_SAY');
+CREATE TYPE "AllergySeverity" AS ENUM ('MILD','MODERATE','SEVERE');
+CREATE TYPE "AppointmentStatus" AS ENUM ('PENDING','CONFIRMED','COMPLETED','CANCELLED','NO_SHOW');
+CREATE TABLE "User" ("id" UUID PRIMARY KEY, "firstName" TEXT NOT NULL, "lastName" TEXT NOT NULL, "email" TEXT NOT NULL UNIQUE, "passwordHash" TEXT NOT NULL, "role" "Role" NOT NULL DEFAULT 'RECEPTIONIST', "active" BOOLEAN NOT NULL DEFAULT true, "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP, "updatedAt" TIMESTAMP(3) NOT NULL);
+CREATE TABLE "Patient" ("id" UUID PRIMARY KEY, "medicalRecordNumber" TEXT NOT NULL UNIQUE, "firstName" TEXT NOT NULL, "lastName" TEXT NOT NULL, "dateOfBirth" TIMESTAMP(3) NOT NULL, "gender" "Gender" NOT NULL, "phone" TEXT, "email" TEXT, "address" TEXT, "emergencyContact" TEXT, "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP, "updatedAt" TIMESTAMP(3) NOT NULL);
+CREATE TABLE "MedicalRecord" ("id" UUID PRIMARY KEY, "patientId" UUID NOT NULL, "authorId" UUID NOT NULL, "visitDate" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP, "chiefComplaint" TEXT NOT NULL, "diagnosis" TEXT NOT NULL, "notes" TEXT NOT NULL, "vitalSigns" JSONB, "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP, "updatedAt" TIMESTAMP(3) NOT NULL);
+CREATE TABLE "Prescription" ("id" UUID PRIMARY KEY, "recordId" UUID NOT NULL, "medication" TEXT NOT NULL, "dosage" TEXT NOT NULL, "frequency" TEXT NOT NULL, "duration" TEXT NOT NULL, "instructions" TEXT, "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP);
+CREATE TABLE "Allergy" ("id" UUID PRIMARY KEY, "patientId" UUID NOT NULL, "allergen" TEXT NOT NULL, "reaction" TEXT, "severity" "AllergySeverity" NOT NULL, "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP);
+CREATE TABLE "Appointment" ("id" UUID PRIMARY KEY, "patientId" UUID NOT NULL, "clinicianId" UUID, "scheduledAt" TIMESTAMP(3) NOT NULL, "durationMinutes" INTEGER NOT NULL DEFAULT 30, "reason" TEXT NOT NULL, "status" "AppointmentStatus" NOT NULL DEFAULT 'PENDING', "notes" TEXT, "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP, "updatedAt" TIMESTAMP(3) NOT NULL);
+CREATE TABLE "AuditLog" ("id" UUID PRIMARY KEY, "userId" UUID, "action" TEXT NOT NULL, "entity" TEXT NOT NULL, "entityId" TEXT, "details" JSONB, "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP);
+CREATE INDEX "Patient_lastName_firstName_idx" ON "Patient"("lastName", "firstName");
+CREATE INDEX "MedicalRecord_patientId_visitDate_idx" ON "MedicalRecord"("patientId", "visitDate");
+CREATE UNIQUE INDEX "Allergy_patientId_allergen_key" ON "Allergy"("patientId", "allergen");
+CREATE INDEX "Appointment_scheduledAt_status_idx" ON "Appointment"("scheduledAt", "status");
+CREATE INDEX "AuditLog_createdAt_idx" ON "AuditLog"("createdAt");
+ALTER TABLE "MedicalRecord" ADD CONSTRAINT "MedicalRecord_patientId_fkey" FOREIGN KEY ("patientId") REFERENCES "Patient"("id") ON DELETE CASCADE;
+ALTER TABLE "MedicalRecord" ADD CONSTRAINT "MedicalRecord_authorId_fkey" FOREIGN KEY ("authorId") REFERENCES "User"("id");
+ALTER TABLE "Prescription" ADD CONSTRAINT "Prescription_recordId_fkey" FOREIGN KEY ("recordId") REFERENCES "MedicalRecord"("id") ON DELETE CASCADE;
+ALTER TABLE "Allergy" ADD CONSTRAINT "Allergy_patientId_fkey" FOREIGN KEY ("patientId") REFERENCES "Patient"("id") ON DELETE CASCADE;
+ALTER TABLE "Appointment" ADD CONSTRAINT "Appointment_patientId_fkey" FOREIGN KEY ("patientId") REFERENCES "Patient"("id") ON DELETE CASCADE;
+ALTER TABLE "Appointment" ADD CONSTRAINT "Appointment_clinicianId_fkey" FOREIGN KEY ("clinicianId") REFERENCES "User"("id");
+ALTER TABLE "AuditLog" ADD CONSTRAINT "AuditLog_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE SET NULL;
+
